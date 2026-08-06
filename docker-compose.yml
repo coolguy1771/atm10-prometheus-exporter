@@ -1,0 +1,105 @@
+# ATM10 Prometheus Exporter Stack
+# Run with: docker compose up -d --build
+x-common-env: &common-env
+  TZ: "America/New_York"
+
+services:
+  # Minecraft Forge server (replace image/tag with your ATM10 server)
+  mc-server:
+    image: itzg/minecraft-server:latest
+    container_name: atm10-minecraft
+    ports:
+      - "25565:25565"
+      - "9346:9346"   # Forge exporter endpoint (internal)
+    volumes:
+      - ./mc-data:/data
+      # Drop modlet jar into mods folder after build
+      # Mount like: mc-forge-exporter/build/libs/atm10-prometheus-exporter-*.jar:/data/mods/atm10-prometheus-exporter.jar
+    environment:
+      EULA: "TRUE"
+      TYPE: FORGE
+      VERSION: 1.20.1
+      FORGE_VERSION: "47.3.0"
+      MEMORY: "8G"
+      SERVER_NAME: "ATMM10 Server"
+      MOTD: "&6All The Mods 10 - Monitored with Prometheus"
+      OPS: "YOUR_PLAYER_USERNAME"
+      ONLINE_MODE: "true"
+      DIFFICULTY: "normal"
+      MAX_PLAYERS: "50"
+    restart: unless-stopped
+
+  # Python world scraper sidecar — reads NBT directly from shared volume
+  world-scraper:
+    build: ./python-scraper
+    container_name: atm10-world-scraper
+    ports:
+      - "9345:9345"   # Prometheus scrape endpoint
+    volumes:
+      - ./mc-data/world:/mc-server/world:ro
+    environment:
+      ATM10_WORLD_PATH: "/mc-server/world"
+      ATM10_BIND_HOST: "0.0.0.0"
+      ATM10_BIND_PORT: "9345"
+      ATM10_SCRAPE_INTERVAL: "60.0"
+    command: ["run"]
+    depends_on:
+      - mc-server
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: atm10-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - mc-server
+      - world-scraper
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: atm10-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "change-me-immediately"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: atm10-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - alertmanager-data:/alertmanager
+    command:
+      - "--storage.path=/alertmanager"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  alertmanager-data:

@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+mc-forge-exporter/run/
+mc-forge-exporter/run-server/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.python-version
+.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Build artifacts
+mc-forge-exporter/build/
+dist/
+*.egg-info/
+
+# MC server data (huge, never commit)
+mc-data/
+
+# OS
+.DS_Store
+Thumbs.db

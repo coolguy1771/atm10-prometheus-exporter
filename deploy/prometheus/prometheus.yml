@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Forge modlet metrics (TPS, JVM, server internals)
+  - job_name: 'atm10-minecraft-server'
+    static_configs:
+      - targets: ['mc-server:9346']
+        labels:
+          env: 'production'
+          role: 'forge-exporter'
+
+  # Python world scraper metrics (NBT-derived mod data)
+  - job_name: 'atm10-world-scraper'
+    static_configs:
+      - targets: ['mc-server:9345']
+        labels:
+          env: 'production'
+          role: 'world-scraper'
+
+rule_files:
+  - 'alerts.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']

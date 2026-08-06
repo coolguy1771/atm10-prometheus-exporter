@@ -1,0 +1,96 @@
+groups:
+  - name: minecraft-server-health
+    rules:
+      - alert: ATPCriticalLowTPS
+        expr: minecraft_server_tps < 15 for 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Server TPS critically low ({{ $value | printf \"%.2f\" }})"
+          description: "TPS has been below 15 for over 3 minutes. Server is severely lagging."
+
+      - alert: MinecraftDegradedTPS
+        expr: minecraft_server_tps < 18 for 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Server TPS degraded ({{ $value | printf \"%.2f\" }})"
+          description: "TPS below 18 for over 5 minutes."
+
+      - alert: MinecraftPlayersOffline
+        expr: minecraft_players_online == 0 for 1h and ON(job) time() > time() - 3600
+        labels:
+          severity: info
+        annotations:
+          summary: "No players online"
+          description: "Server has been running with zero players for over an hour."
+
+      - alert: MinecraftGCPressureHigh
+        expr: |
+          rate(jvm_gc_collection_time_seconds[5m]) / rate(jvm_gc_collection_count[5m]) > 0.2
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM GC pause times high"
+          description: "Average GC pause time above 200ms."
+
+      - alert: MinecraftHeapUsageHigh
+        expr: |
+          jvm_heap_memory_used_bytes / on(area) group_left() 
+          (jvm_heap_memory_used_bytes{area="total"} * 1.1) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM heap usage above 85%"
+
+      - alert: MinecraftChunkGenLagging
+        expr: rate(minecraft_chunk_load_too_slow_total[5m]) > 2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Chunk generation causing lag"
+          description: "More than 2 chunks loading too slowly per second."
+
+      - alert: MinecraftMekanismTankNearEmpty
+        expr: minecraft_mekanism_tank_fill_percent < 10 and on(dimension,x,y,z) group_left(fluid) minecraft_mekanism_tank_fill_percent > 0
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "Mekanism tank nearly empty"
+          description: "Tank at ({{ $labels.x }},{{ $labels.y }},{{ $labels.z }}) holding fluid '{{ $labels.fluid }}' below 10% capacity."
+
+  - name: ae2-metrics
+    rules:
+      - alert: MinecraftAEDrivesNearCapacity
+        expr: |
+          minecraft_ae2_me_drive_bytes_used > 
+          (max(minecraft_ae2_me_drive_bytes_used) * 0.9) 
+          unless ON(dimension) minecraft_ae2_me_drives_total == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AE2 ME network approaching full capacity in {{ $labels.dimension }}"
+
+      - alert: MinecraftAECraftingBacklog
+        expr: minecraft_ae2_crafting_jobs_pending > 50 for 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AE2 crafting CPU backlog high"
+          description: "Over {{ $value }} pending crafting jobs waiting for CPUs."
+
+  - name: create-metrics
+    rules:
+      - alert: MinecraftCreateKineticStarvation
+        expr: |
+          histogram_quantile(0.9, rate(minecraft_create_shaft_speed_rpm_bucket[5m])) < 16
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Create kinetic network RPM dropping"
+          description: "90th percentile shaft RPM below 16, indicating overloaded/bottlenecked kinetic chains."

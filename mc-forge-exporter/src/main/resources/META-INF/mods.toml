@@ -1,0 +1,27 @@
+modLoader = "javfml"
+loaderVersion = "[47,)"
+license = "MIT"
+
+[[mods]]
+    modId = "atm10_prometheus_exporter"
+    version = "${mod_version}"
+    displayName = "ATM10 Prometheus Exporter"
+    authors = "yourname"
+    description = '''
+Exposes Minecraft server metrics for ATMM10 via Prometheus HTTP endpoint.
+Collects JVM, server, and mod-specific (AE2, Create, Mekanism) metrics.
+'''
+
+[[dependencies.atm10_prometheus_exporter]]
+    modId = "forge"
+    mandatory = true
+    versionRange = "${forge_version_range}"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.atm10_prometheus_exporter]]
+    modId = "minecraft"
+    mandatory = true
+    versionRange = "[1.20.1,1.20.2)"
+    ordering = "NONE"
+    side = "BOTH"

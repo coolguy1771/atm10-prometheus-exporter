@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atm10-world-scraper"
+version = "1.0.0-alpha"
+description = "Prometheus exporter for Minecraft ATMM10 world data via NBT parsing"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+dependencies = [
+    "prometheus-client>=0.20.0",
+    "nbtlib>=2.0.0,<3",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic-settings>=2.6.0",
+]
+
+[project.scripts]
+atm10-scraper = "atm10_scraper.main:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 99
+target-version = "py311"
